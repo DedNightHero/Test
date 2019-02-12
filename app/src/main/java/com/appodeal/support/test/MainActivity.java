@@ -1,16 +1,24 @@
 package com.appodeal.support.test;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.support.annotation.NonNull;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 import com.appodeal.ads.Appodeal;
 import com.appodeal.ads.InterstitialCallbacks;
 import com.appodeal.ads.BannerCallbacks;
+import com.appodeal.ads.NativeAd;
+import com.appodeal.ads.NativeCallbacks;
+
+import java.util.List;
+
 import android.support.v7.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
@@ -18,8 +26,10 @@ public class MainActivity extends AppCompatActivity {
     public static final String APP_KEY = "280572650a076420aff44edb7c91ba9f7cf717f6c3c4e3f8";
     private CountDownTimer cdTimer;
     private TextView cdTimerTV;
-    private Button disableAdButton;
+    private Button disableShowAdButton;
+    private ListView nativeAdLV;
     private long millisInFuture = 30000;
+    private int numberofNAds = 3;
     boolean consent=false;
     boolean isBannerShown=false;
     boolean isAdDisabled=false;
@@ -54,11 +64,20 @@ public class MainActivity extends AppCompatActivity {
         cdTimerTV.setVisibility(View.GONE);
     }
 
+    private void showNativeAdLV() {
+        List<NativeAd> nativeAds = Appodeal.getNativeAds(numberofNAds);
+        ListAdapter listAdapter = new ListAdapter(this, nativeAds);
+        nativeAdLV.setAdapter(listAdapter);
+        nativeAdLV.setVisibility(View.VISIBLE);
+    }
+
     private void setListener() {
-        disableAdButton.setOnClickListener(new View.OnClickListener() {
+        disableShowAdButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (!isTimeUp && !isAdDisabled)
                     disableAd();
+                showNativeAdLV();
+                disableShowAdButton.setEnabled(false);
             }
         });
     }
@@ -90,6 +109,23 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onInterstitialExpired() {}
         });
+
+        Appodeal.setNativeCallbacks(new NativeCallbacks() {
+            @Override
+            public void onNativeLoaded() {}
+
+            @Override
+            public void onNativeFailedToLoad() {}
+
+            @Override
+            public void onNativeShown(NativeAd nativeAd) {}
+
+            @Override
+            public void onNativeClicked(NativeAd nativeAd) {}
+
+            @Override
+            public void onNativeExpired() {}
+        });
     }
 
     @Override
@@ -97,6 +133,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         Appodeal.onResume(this, Appodeal.BANNER);
         Appodeal.onResume(this, Appodeal.INTERSTITIAL);
+        Appodeal.onResume(this, Appodeal.NATIVE);
     }
 
     @Override
@@ -112,11 +149,14 @@ public class MainActivity extends AppCompatActivity {
             consent=true;
 
         cdTimerTV=findViewById(R.id.cdTimerTV);
-        disableAdButton=findViewById(R.id.disableAdButton);
+        disableShowAdButton=findViewById(R.id.disableShowAdButton);
+        nativeAdLV = findViewById(R.id.nativeAdLV);
+
         setListener();
         Appodeal.setTesting(true);
-        Appodeal.initialize(this, APP_KEY, Appodeal.INTERSTITIAL | Appodeal.BANNER, consent);
+        Appodeal.initialize(this, APP_KEY, Appodeal.INTERSTITIAL | Appodeal.BANNER | Appodeal.NATIVE, consent);
         setCallBacks();
         Appodeal.show(this, Appodeal.BANNER_TOP);
+        Appodeal.cache(MainActivity.this, Appodeal.NATIVE, numberofNAds);
     }
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Test</string>
-    <string name="dAdButton">DISABLE AD</string>
+    <string name="dsAdButton">DISABLE | SHOW</string>
     <string name="cdTimerTextView">30</string>
 </resources>
