@@ -1,12 +1,10 @@
 package com.appodeal.support.test;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.support.annotation.NonNull;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ListView;
@@ -17,6 +15,7 @@ import com.appodeal.ads.BannerCallbacks;
 import com.appodeal.ads.NativeAd;
 import com.appodeal.ads.NativeCallbacks;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import android.support.v7.app.AppCompatActivity;
@@ -34,6 +33,8 @@ public class MainActivity extends AppCompatActivity {
     boolean isBannerShown=false;
     boolean isAdDisabled=false;
     boolean isTimeUp=false;
+    private List<SomeInfo> someInfoList = new ArrayList();
+    private SomeInfoAdapter someInfoAdapter;
 
     private void setTimer(){
         cdTimer = new CountDownTimer(millisInFuture, 1000) {
@@ -64,10 +65,14 @@ public class MainActivity extends AppCompatActivity {
         cdTimerTV.setVisibility(View.GONE);
     }
 
+    private void initSomeInfoList() {
+        for (int i=1;i<7;i++) {
+            someInfoList.add(new SomeInfo("Lorem Ipsum", "dolor sit amet, consectetur adipiscing elit"));
+        }
+    }
     private void showNativeAdLV() {
-        List<NativeAd> nativeAds = Appodeal.getNativeAds(numberofNAds);
-        ListAdapter listAdapter = new ListAdapter(this, nativeAds);
-        nativeAdLV.setAdapter(listAdapter);
+        someInfoAdapter = new SomeInfoAdapter(this, someInfoList);
+        nativeAdLV.setAdapter(someInfoAdapter);
         nativeAdLV.setVisibility(View.VISIBLE);
     }
 
@@ -158,5 +163,6 @@ public class MainActivity extends AppCompatActivity {
         setCallBacks();
         Appodeal.show(this, Appodeal.BANNER_TOP);
         Appodeal.cache(MainActivity.this, Appodeal.NATIVE, numberofNAds);
+        initSomeInfoList();
     }
 }
