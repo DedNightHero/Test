@@ -84,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void hideBanner(){
-        Appodeal.hide(this ,Appodeal.BANNER);
+        Appodeal.hide(this, Appodeal.BANNER);
         isBannerDisabled=true;
     }
 
