@@ -15,6 +15,7 @@ import com.appodeal.ads.InterstitialCallbacks;
 import com.appodeal.ads.BannerCallbacks;
 import com.appodeal.ads.NativeAd;
 import com.appodeal.ads.NativeCallbacks;
+import com.appodeal.ads.utils.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,9 +24,11 @@ import android.support.v7.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String APP_KEY = "280572650a076420aff44edb7c91ba9f7cf717f6c3c4e3f8";
+    private static final String APP_KEY = "280572650a076420aff44edb7c91ba9f7cf717f6c3c4e3f8";
     private static final String KEY_TIMER = "TIMER";
+    private static final String KEY_MSBS = "MSBS";
     private static final String KEY_BANNERSHOWN = "BANNERSHOWN";
+    private static final String KEY_BANNERDISABLED = "BANNERDISABLED";
     private static final String KEY_ADDIS = "ADDIS";
     private static final String KEY_TIMEUP = "TIMEUP";
     private static final String KEY_BTNCLCKD = "BTNCLCKD";
@@ -37,10 +40,11 @@ public class MainActivity extends AppCompatActivity {
     private Button disableShowAdButton;
     private RecyclerView nativeAdRV;
     private long millisIF = 30000;
-    private long millisUF;
-    private int numberofNAds = 3;
+    private long millisUF=millisIF;
+    private long millisBS=0;
     boolean consent=false;
     boolean isBannerShown=false;
+    boolean isBannerDisabled=false;
     boolean isAdDisabled=false;
     boolean isTimeUp=false;
 
@@ -50,24 +54,38 @@ public class MainActivity extends AppCompatActivity {
             public void onTick(long millisUntilFinished) {
                 cdTimerTV.setText(Long.toString(millisUntilFinished/1000));
                 millisUF= millisUntilFinished;
-                if(!isBannerShown && (millisIF - millisUntilFinished)>=5000)
+                if(!isBannerDisabled && (millisBS - millisUntilFinished)>=5000)
                     hideBanner();
             }
             @Override
             public void onFinish() {
                 cdTimerTV.setText(Integer.toString(0));
-                millisUF=0;
+                millisUF=millisIF;
+                if(!isBannerDisabled)
+                    hideBanner();
+                if(!isAdDisabled)
+                    isTimeUp=true;
                 if (Appodeal.isLoaded(Appodeal.INTERSTITIAL) && !isAdDisabled){
                     Appodeal.show(MainActivity.this, Appodeal.INTERSTITIAL);
-                    isTimeUp=true;
                 }
+                else if(!Appodeal.isLoaded(Appodeal.INTERSTITIAL))
+                    setTimer(millisUF);
             }
         }.start();
     }
 
+    private void cancelTimer() {
+        if(cdTimer!=null)
+            cdTimer.cancel();
+    }
+
+    private void showBanner() {
+        Appodeal.show(this, Appodeal.BANNER_TOP);
+    }
+
     private void hideBanner(){
         Appodeal.hide(this ,Appodeal.BANNER);
-        isBannerShown=true;
+        isBannerDisabled=true;
     }
 
     private void disableAd() {
@@ -84,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
         }
         nativeAdapter.addPack(publisherList);
     }
+
     private void showNativeAdRV() {
         nativeAdRV.setVisibility(View.VISIBLE);
     }
@@ -98,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     private void setCallBacks() {
         Appodeal.setBannerCallbacks(new BannerCallbacks() {
             @Override
@@ -105,7 +125,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onBannerFailedToLoad() {}
             @Override
-            public void onBannerShown() {if (cdTimer==null)setTimer(millisIF);}
+            public void onBannerShown() {
+                if(!isBannerShown)
+                    millisBS=millisUF;
+                isBannerShown=true;
+            }
             @Override
             public void onBannerClicked() {}
             @Override
@@ -122,12 +146,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onInterstitialClicked() {}
             @Override
-            public void onInterstitialClosed() {setTimer(millisIF);}
+            public void onInterstitialClosed() {}
             @Override
             public void onInterstitialExpired() {}
         });
 
-        Appodeal.setNativeCallbacks(new NativeCallbacks() {
+        Appodeal.setNativeCallbacks(new NativeCallbacks(){
             @Override
             public void onNativeLoaded() {}
 
@@ -145,12 +169,68 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void restoreInstanceState(Bundle savedInstanceState) {
+        millisUF=savedInstanceState.getLong(KEY_TIMER, 0);
+        millisBS=savedInstanceState.getLong(KEY_MSBS,0);
+        isAdDisabled=savedInstanceState.getBoolean(KEY_ADDIS,false);
+        isBannerShown=savedInstanceState.getBoolean(KEY_BANNERSHOWN,false);
+        isBannerDisabled=savedInstanceState.getBoolean(KEY_BANNERDISABLED, false);
+        isTimeUp=savedInstanceState.getBoolean(KEY_TIMEUP,false);
+        if (!isTimeUp && isAdDisabled) {
+            disableShowAdButton.setEnabled(false);
+            nativeAdRV.setVisibility(View.VISIBLE);
+            cdTimerTV.setVisibility(View.GONE);
+        }
+        else if(!isTimeUp && !isAdDisabled) {
+            disableShowAdButton.setEnabled(true);
+            nativeAdRV.setVisibility(View.GONE);
+            cdTimerTV.setVisibility(View.VISIBLE);
+        }
+        else if(isTimeUp && savedInstanceState.getBoolean(KEY_BTNCLCKD, false)) {
+            disableShowAdButton.setEnabled(false);
+            nativeAdRV.setVisibility(View.VISIBLE);
+            cdTimerTV.setVisibility(View.VISIBLE);
+        }
+        else if (isTimeUp && !savedInstanceState.getBoolean(KEY_BTNCLCKD, false)) {
+            disableShowAdButton.setEnabled(true);
+            nativeAdRV.setVisibility(View.GONE);
+            cdTimerTV.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void checkPermissions() {
+        if (Build.VERSION.SDK_INT >= 23 && (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
+                checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
+            Appodeal.requestAndroidMPermissions(this, new AppodealPermissionCallbacks(this));
+        }
+        else
+            consent=true;
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putLong(KEY_TIMER, millisUF);
+        outState.putLong(KEY_MSBS, millisBS);
+        outState.putBoolean(KEY_ADDIS, isAdDisabled);
+        outState.putBoolean(KEY_BANNERSHOWN, isBannerShown);
+        outState.putBoolean(KEY_BANNERDISABLED, isBannerDisabled);
+        outState.putBoolean(KEY_TIMEUP, isTimeUp);
+        outState.putBoolean(KEY_BTNCLCKD, !disableShowAdButton.isEnabled());
+    }
+
     @Override
     public void onResume() {
         super.onResume();
         Appodeal.onResume(this, Appodeal.BANNER);
-        Appodeal.onResume(this, Appodeal.INTERSTITIAL);
-        Appodeal.onResume(this, Appodeal.NATIVE);
+        if(!isAdDisabled || !isBannerDisabled)
+            setTimer(millisUF);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        cancelTimer();
     }
 
     @Override
@@ -158,73 +238,27 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if (Build.VERSION.SDK_INT >= 23 && (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
-                checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
-            Appodeal.requestAndroidMPermissions(this, new AppodealPermissionCallbacks(this));
-        }
-        else
-            consent=true;
+        checkPermissions();
 
         cdTimerTV=findViewById(R.id.cdTimerTV);
         disableShowAdButton=findViewById(R.id.disableShowAdButton);
         nativeAdRV = findViewById(R.id.nativeAdRV);
 
-        if (savedInstanceState != null) {
-            millisUF=savedInstanceState.getLong(KEY_TIMER, 0);
-            if(millisUF==0)
-                millisUF=millisIF;
-            isAdDisabled=savedInstanceState.getBoolean(KEY_ADDIS,false);
-            isBannerShown=savedInstanceState.getBoolean(KEY_BANNERSHOWN,false);
-            isTimeUp=savedInstanceState.getBoolean(KEY_TIMEUP,false);
-            if (!isTimeUp && isAdDisabled) {
-                disableShowAdButton.setEnabled(false);
-                cdTimerTV.setVisibility(View.GONE);
-                nativeAdRV.setVisibility(View.VISIBLE);
-            }
-            else if(!isTimeUp && !isAdDisabled) {
-                disableShowAdButton.setEnabled(true);
-                nativeAdRV.setVisibility(View.GONE);
-                cdTimerTV.setVisibility(View.VISIBLE);
-                setTimer(millisUF);
-            }
-            else if(isTimeUp && savedInstanceState.getBoolean(KEY_BTNCLCKD, false)) {
-                disableShowAdButton.setEnabled(false);
-                nativeAdRV.setVisibility(View.VISIBLE);
-                cdTimerTV.setVisibility(View.VISIBLE);
-                setTimer(millisUF);
-            }
-            else if (isTimeUp && !savedInstanceState.getBoolean(KEY_BTNCLCKD, false)) {
-                disableShowAdButton.setEnabled(true);
-                nativeAdRV.setVisibility(View.GONE);
-                cdTimerTV.setVisibility(View.VISIBLE);
-                setTimer(millisUF);
-            }
-        }
+        if(savedInstanceState!=null)
+            restoreInstanceState(savedInstanceState);
 
+        Appodeal.setLogLevel(Log.LogLevel.debug);
         setListener();
-        Appodeal.setTesting(true);
         Appodeal.initialize(this, APP_KEY, Appodeal.INTERSTITIAL | Appodeal.BANNER | Appodeal.NATIVE, consent);
         setCallBacks();
         if (!isBannerShown)
-            Appodeal.show(this, Appodeal.BANNER_TOP);
-        Appodeal.cache(MainActivity.this, Appodeal.NATIVE, numberofNAds);
+            showBanner();
         nativeAdapter = new NativeAdapter(new ArrayList<Integer>());
         initList();
-        appodealWrapperAdapter = new AppodealWrapperAdapter(nativeAdapter, 2, 1);
+        appodealWrapperAdapter = new AppodealWrapperAdapter(nativeAdapter, 2);
         linearLayoutManager = new LinearLayoutManager(this);
         linearLayoutManager.setSmoothScrollbarEnabled(true);
         nativeAdRV.setLayoutManager(linearLayoutManager);
         nativeAdRV.setAdapter(appodealWrapperAdapter);
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putLong(KEY_TIMER, millisUF);
-        outState.putBoolean(KEY_ADDIS, isAdDisabled);
-        outState.putBoolean(KEY_BANNERSHOWN, isBannerShown);
-        outState.putBoolean(KEY_TIMEUP, isTimeUp);
-        outState.putBoolean(KEY_BTNCLCKD, !disableShowAdButton.isEnabled());
-        if(cdTimer!=null) cdTimer.cancel();
     }
 }

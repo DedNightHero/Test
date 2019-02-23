@@ -17,9 +17,6 @@ import com.appodeal.ads.NativeAdView;
 import com.appodeal.ads.NativeCallbacks;
 import com.appodeal.ads.NativeIconView;
 import com.appodeal.ads.NativeMediaView;
-import com.appodeal.ads.native_ad.views.NativeAdViewAppWall;
-import com.appodeal.ads.native_ad.views.NativeAdViewContentStream;
-import com.appodeal.ads.native_ad.views.NativeAdViewNewsFeed;
 
 import java.util.List;
 
@@ -30,28 +27,21 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     private static final int DEFAULT_NATIVE_STEP = 5;
 
-    private static final int NATIVE_TYPE_NEWS_FEED = 1;
-    private static final int NATIVE_TYPE_APP_WALL = 2;
-    private static final int NATIVE_TYPE_CONTENT_STREAM = 3;
-    private static final int NATIVE_WITHOUT_ICON = 4;
-
     private static final int VIEW_HOLDER_NATIVE_AD_TYPE = 600;
 
 
     private RecyclerView.Adapter<RecyclerView.ViewHolder> userAdapter;
     private int nativeStep = DEFAULT_NATIVE_STEP;
-    private int nativeTemplateType = 0;
 
     private SparseArray<NativeAd> nativeAdList = new SparseArray<>();
 
     /**
      * @param userAdapter user adapter
-     * @param nativeStep  step show {@link com.appodeal.ads.NativeAd}
+     * @param nativeStep step show {@link com.appodeal.ads.NativeAd}
      */
-    public AppodealWrapperAdapter(RecyclerView.Adapter<RecyclerView.ViewHolder> userAdapter, int nativeStep, int nativeTemplateType) {
+    public AppodealWrapperAdapter(RecyclerView.Adapter<RecyclerView.ViewHolder> userAdapter, int nativeStep) {
         this.userAdapter = userAdapter;
         this.nativeStep = nativeStep + 1;
-        this.nativeTemplateType = nativeTemplateType;
 
         userAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
 
@@ -83,24 +73,8 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         if (viewType == VIEW_HOLDER_NATIVE_AD_TYPE) {
-            View view;
-            switch (nativeTemplateType) {
-                case NATIVE_TYPE_NEWS_FEED:
-                    view = new NativeAdViewNewsFeed(parent.getContext());
-                    return new NativeCreatedAdViewHolder(view);
-                case NATIVE_TYPE_APP_WALL:
-                    view = new NativeAdViewAppWall(parent.getContext());
-                    return new NativeCreatedAdViewHolder(view);
-                case NATIVE_TYPE_CONTENT_STREAM:
-                    view = new NativeAdViewContentStream(parent.getContext());
-                    return new NativeCreatedAdViewHolder(view);
-                case NATIVE_WITHOUT_ICON:
-                    view = LayoutInflater.from(parent.getContext()).inflate(R.layout.native_ads_without_icon, parent, false);
-                    return new NativeWithoutIconHolder(view);
-                default:
-                    view = LayoutInflater.from(parent.getContext()).inflate(R.layout.include_native_ads, parent, false);
-                    return new NativeCustomAdViewHolder(view);
-            }
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.include_native_ads, parent, false);
+            return new NativeCustomAdViewHolder(view);
         } else {
             return userAdapter.onCreateViewHolder(parent, viewType);
         }
@@ -108,8 +82,8 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-        if (holder instanceof NativeAdViewHolder) {
-            ((NativeAdViewHolder) holder).fillNative(nativeAdList.get(position));
+        if (holder instanceof NativeCustomAdViewHolder) {
+            ((NativeCustomAdViewHolder) holder).fillNative(nativeAdList.get(position));
         } else {
             userAdapter.onBindViewHolder(holder, getPositionInUserAdapter(position));
         }
@@ -138,8 +112,8 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     public void onViewRecycled(RecyclerView.ViewHolder holder) {
         super.onViewRecycled(holder);
 
-        if (holder instanceof NativeAdViewHolder) {
-            ((NativeAdViewHolder) holder).unregisterViewForInteraction();
+        if (holder instanceof NativeCustomAdViewHolder) {
+            ((NativeCustomAdViewHolder) holder).unregisterViewForInteraction();
         }
     }
 
@@ -215,7 +189,6 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     /**
      * Method for searching position in user adapter
-     *
      * @param position index in wrapper adapter
      * @return index in user adapter
      */
@@ -240,7 +213,6 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     /**
      * Get native ad item
-     *
      * @return {@link com.appodeal.ads.NativeAd}
      */
     @Nullable
@@ -251,7 +223,6 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     /**
      * Method for finding next position suitable for {@link com.appodeal.ads.NativeAd}
-     *
      * @return position for next native ad view
      */
     private int findNextAdPosition() {
@@ -271,9 +242,9 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
 
     /**
-     * View holder for create custom NativeAdView
+     * View holder for create custom {@link com.appodeal.ads.native_ad.views.NativeAdView}
      */
-    static class NativeCustomAdViewHolder extends NativeAdViewHolder {
+    static class NativeCustomAdViewHolder extends RecyclerView.ViewHolder {
 
         private NativeAdView nativeAdView;
         private TextView tvTitle;
@@ -287,6 +258,7 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
         NativeCustomAdViewHolder(View itemView) {
             super(itemView);
+
             nativeAdView = itemView.findViewById(R.id.native_item);
             tvTitle = itemView.findViewById(R.id.tv_title);
             tvDescription = itemView.findViewById(R.id.tv_description);
@@ -298,10 +270,10 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             nativeMediaView = itemView.findViewById(R.id.appodeal_media_view_content);
         }
 
-        @Override
         void fillNative(NativeAd nativeAd) {
             tvTitle.setText(nativeAd.getTitle());
             tvDescription.setText(nativeAd.getDescription());
+
             if (nativeAd.getRating() == 0) {
                 ratingBar.setVisibility(View.INVISIBLE);
             } else {
@@ -309,7 +281,9 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 ratingBar.setRating(nativeAd.getRating());
                 ratingBar.setStepSize(0.1f);
             }
+
             ctaButton.setText(nativeAd.getCallToAction());
+
             View providerView = nativeAd.getProviderView(nativeAdView.getContext());
             if (providerView != null) {
                 if (providerView.getParent() != null && providerView.getParent() instanceof ViewGroup) {
@@ -319,164 +293,35 @@ public class AppodealWrapperAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                 providerViewContainer.addView(providerView, layoutParams);
             }
+
             if (nativeAd.getAgeRestrictions() != null) {
                 tvAgeRestrictions.setText(nativeAd.getAgeRestrictions());
                 tvAgeRestrictions.setVisibility(View.VISIBLE);
             } else {
                 tvAgeRestrictions.setVisibility(View.GONE);
             }
+
             if (nativeAd.containsVideo()) {
                 nativeAdView.setNativeMediaView(nativeMediaView);
             } else {
                 nativeMediaView.setVisibility(View.GONE);
             }
+
+
             nativeAdView.setTitleView(tvTitle);
             nativeAdView.setDescriptionView(tvDescription);
             nativeAdView.setRatingView(ratingBar);
             nativeAdView.setCallToActionView(ctaButton);
             nativeAdView.setNativeIconView(nativeIconView);
             nativeAdView.setProviderView(providerView);
-            nativeAdView.registerView(nativeAd);
-            nativeAdView.setVisibility(View.VISIBLE);
-        }
-
-        @Override
-        void unregisterViewForInteraction() {
-            nativeAdView.unregisterViewForInteraction();
-        }
-    }
-
-    /**
-     * View holder for create custom NativeAdView without NativeIconView
-     */
-    static class NativeWithoutIconHolder extends NativeAdViewHolder {
-        private NativeAdView nativeAdView;
-        private TextView tvTitle;
-        private TextView tvDescription;
-        private RatingBar ratingBar;
-        private Button ctaButton;
-        private TextView tvAgeRestrictions;
-        private NativeMediaView nativeMediaView;
-        private FrameLayout providerViewContainer;
-
-        NativeWithoutIconHolder(View itemView) {
-            super(itemView);
-            nativeAdView = itemView.findViewById(R.id.native_item);
-            tvTitle = itemView.findViewById(R.id.tv_title);
-            tvDescription = itemView.findViewById(R.id.tv_description);
-            ratingBar = itemView.findViewById(R.id.rb_rating);
-            ctaButton = itemView.findViewById(R.id.b_cta);
-            providerViewContainer = itemView.findViewById(R.id.provider_view);
-            tvAgeRestrictions = itemView.findViewById(R.id.tv_age_restriction);
-            nativeMediaView = itemView.findViewById(R.id.appodeal_media_view_content);
-        }
-
-        @Override
-        void fillNative(NativeAd nativeAd) {
-            tvTitle.setText(nativeAd.getTitle());
-            tvDescription.setText(nativeAd.getDescription());
-
-            if (nativeAd.getRating() == 0) {
-                ratingBar.setVisibility(View.INVISIBLE);
-            } else {
-                ratingBar.setVisibility(View.VISIBLE);
-                ratingBar.setRating(nativeAd.getRating());
-                ratingBar.setStepSize(0.1f);
-            }
-
-            ctaButton.setText(nativeAd.getCallToAction());
-
-            View providerView = nativeAd.getProviderView(nativeAdView.getContext());
-            if (providerView != null) {
-                if (providerView.getParent() != null && providerView.getParent() instanceof ViewGroup) {
-                    ((ViewGroup) providerView.getParent()).removeView(providerView);
-                }
-                providerViewContainer.removeAllViews();
-                ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                providerViewContainer.addView(providerView, layoutParams);
-            }
-
-            if (nativeAd.getAgeRestrictions() != null) {
-                tvAgeRestrictions.setText(nativeAd.getAgeRestrictions());
-                tvAgeRestrictions.setVisibility(View.VISIBLE);
-            } else {
-                tvAgeRestrictions.setVisibility(View.GONE);
-            }
-
-            if (nativeAd.containsVideo()) {
-                nativeAdView.setNativeMediaView(nativeMediaView);
-            } else {
-                nativeMediaView.setVisibility(View.GONE);
-            }
-
-
-            nativeAdView.setTitleView(tvTitle);
-            nativeAdView.setDescriptionView(tvDescription);
-            nativeAdView.setRatingView(ratingBar);
-            nativeAdView.setCallToActionView(ctaButton);
-            nativeAdView.setProviderView(providerView);
 
             nativeAdView.registerView(nativeAd);
             nativeAdView.setVisibility(View.VISIBLE);
         }
 
-        @Override
         void unregisterViewForInteraction() {
             nativeAdView.unregisterViewForInteraction();
         }
 
     }
-
-    /**
-     * View holder for create NativeAdView by template
-     */
-    static class NativeCreatedAdViewHolder extends NativeAdViewHolder {
-
-        NativeCreatedAdViewHolder(View itemView) {
-            super(itemView);
-        }
-
-        @Override
-        void fillNative(NativeAd nativeAd) {
-            if (itemView instanceof NativeAdViewNewsFeed) {
-                com.appodeal.ads.native_ad.views.NativeAdViewNewsFeed nativeAdView = (NativeAdViewNewsFeed) itemView;
-                nativeAdView.setNativeAd(nativeAd);
-            } else if (itemView instanceof NativeAdViewAppWall) {
-                com.appodeal.ads.native_ad.views.NativeAdViewAppWall nativeAdView = (NativeAdViewAppWall) itemView;
-                nativeAdView.setNativeAd(nativeAd);
-            } else if (itemView instanceof NativeAdViewContentStream) {
-                com.appodeal.ads.native_ad.views.NativeAdViewContentStream nativeAdView = (NativeAdViewContentStream) itemView;
-                nativeAdView.setNativeAd(nativeAd);
-            }
-        }
-
-        @Override
-        void unregisterViewForInteraction() {
-            if (itemView instanceof NativeAdViewNewsFeed) {
-                com.appodeal.ads.native_ad.views.NativeAdViewNewsFeed nativeAdView = (NativeAdViewNewsFeed) itemView;
-                nativeAdView.unregisterViewForInteraction();
-            } else if (itemView instanceof NativeAdViewAppWall) {
-                com.appodeal.ads.native_ad.views.NativeAdViewAppWall nativeAdView = (NativeAdViewAppWall) itemView;
-                nativeAdView.unregisterViewForInteraction();
-            } else if (itemView instanceof NativeAdViewContentStream) {
-                com.appodeal.ads.native_ad.views.NativeAdViewContentStream nativeAdView = (NativeAdViewContentStream) itemView;
-                nativeAdView.unregisterViewForInteraction();
-            }
-        }
-    }
-
-    /**
-     * Abstract view holders for create NativeAdView
-     */
-    abstract static class NativeAdViewHolder extends RecyclerView.ViewHolder {
-
-        NativeAdViewHolder(View itemView) {
-            super(itemView);
-        }
-
-        abstract void fillNative(NativeAd nativeAd);
-
-        abstract void unregisterViewForInteraction();
-    }
-
 }
